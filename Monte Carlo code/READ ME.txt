@@ -1,0 +1,26 @@
+This repository contains a modified version of the Silicon Photomultiplier 
+(SiPM) simulation code originally developed by Jha et al.
+
+REFERENCES & PUBLICATIONS
+----------------------------------------------------------------------
+If you use this code or its results in your research, please cite the 
+following manuscripts:
+
+1. Original Code:
+   Jha, A.K., Van Dam, H.T., Kupinski, M.A., & Clarkson, E. (2013). 
+   Simulating silicon photomultiplier response to scintillation light. 
+   IEEE Transactions on Nuclear Science, 60(1), 336-351.
+   DOI: https://doi.org/10.1109/TNS.2012.2234135
+
+2. Modifications & Present Version:
+   Moya-Zamanillo, V., & Rosado, J. (2024). 
+   Understanding the Nonlinear Response of SiPMs. 
+   Sensors, 24(8), 2648.
+   DOI: https://doi.org/10.3390/s24082648
+
+----------------------------------------------------------------------
+CITATION REQUIREMENT
+----------------------------------------------------------------------
+Credits for any results obtained with this code should cite BOTH 
+manuscripts listed above.
+======================================================================

@@ -1,0 +1,211 @@
+
+% VM: This script is designed to calculate the mean output charge and its
+%     standard deviation. Several posible pulses and SiPMs operative
+%     overvoltages can be simulated in a loop. Results can be saved into an
+%     excel file.
+
+no_timesteps=50; % number of "Steps" in which the total simulation time will be divided, default value of 50 is ok for most applications
+
+%%%% Define Seeds(Energies) and poisson fluctuations %%%%
+
+N=100; % Number of pixels
+
+
+%[E] = Seeds(10,N); % Incident energy vector from a certain list
+%E=[1];
+
+E = logspace(log10(0.01/1*N), log10(100/1*N), 30)';
+
+Poisson=0; % If Poisson=1 Poissonian fluctuations in the photon generation will be activated
+Theta=0.6; % Theta parameter for super-poisson case
+
+%%%% Define Light pulse, Noise probability, Voltage and PDE %%%%
+
+U=[2.68]; % Overvoltage vector
+pde=[1]; % PDE vector
+
+% Light pulse characteristic times
+% Different puse options:
+% Purely exponential: Td>0, Tr,Ts, Tt1, Tt2, Tc = 0
+% Biexponential: Td, Tr >0, Ts, Tt1, Tt2, Tc = 0
+% Rectangular: Ts>0, Td, Tr,Tt1, Tt2, Tc = 0
+% Rising Triangular Tt1 >0, Td, Tr, Ts, Tt2, Tc = 0
+% Decreasing Triangular Tt2 >0, Td, Tr, Ts, Tt1, Tc = 0
+% Triangular (with rising and down times) Tt1, Tt2 >0, Td, Tr, Ts, Tc = 0
+% Semicircular Tc>0, Td, Tr, Ts, Tt1, Tt2 = 0
+
+
+Td=[0]*30e-9;
+Tr=[1]*0e-9;
+Ts=[0.01]*30e-9;
+Tt1=[1]*00e-9;
+Tt2=[1]*0e-9;
+Tc=[1]*0e-9;
+
+% Noise probability vector
+Prob=[0];
+
+
+
+% Per  pair overvoltage U, PDE every light pulse shape and noise probability 
+% will be simulated, and per every light pulse shape every energy will be simulated
+
+% U and PDE vector must have the same size
+% Every characteristic time vector and noise probability must have the same
+% size
+
+
+
+%%% Safe options %%%
+
+Safe = 1; % if safe=1 the results will be savd in a excel file with the following name
+nombre=' SiPM 100 píxeles Ts 0.01 Superpoissoniano Theta 0.6.xls';
+%nombre='SiPM 100 píxeles 20% crosstalk no fluctuaciones.xls';
+%%%% Simulation %%%%
+
+ 
+% COmprobation of the size of the simulated vectors
+if (length(Td)==length(Tr)) && (length(Td)==length(Ts)) && (length(Td)==length(Tt1)) && (length(Td)==length(Tt2)) && (length(Td)==length(Prob)) && (length(Td)==length(Tc)) && length(U)==length(pde)
+else
+    error('Index not match')
+end
+
+
+N_Td=length(Td);
+N_U=length(U);
+
+
+for ui=1:N_U
+    % loop over the charcteristic overvoltages
+    mean_q=zeros(length(E),N_Td+1);
+    mean_q_ct=zeros(length(E),N_Td+1);
+    mean_q_first=zeros(length(E),N_Td+1);
+    mean_N_first=zeros(length(E),N_Td+1);
+    std_q=zeros(length(E),N_Td+1); 
+    
+    for uu=1:N_Td
+    	% loop over the characteristic light pulse shapes
+        % Calculating the characteristic SiPM parameter
+        %meas_sipm_par(1)
+        
+        [meas_sipm_par, fixed_sipm_par,crystal_par,flags,Nph,info] = read_input_array(1,U(ui),pde(ui),Td(uu),Tr(uu),Ts(uu),Tt1(uu),Tt2(uu),Tc(uu),Prob(uu),Poisson,E);
+            
+        N_E=length(Nph);    
+        for i=1:N_E
+            tic;
+            
+           
+            % VM: Selecting the number of times the light pulse will be
+            %     simulated
+
+            if Nph(i)/N<=1
+                rep=10000;
+            elseif 1<Nph(i)/N && Nph(i)/N<10
+                
+                rep=5000;
+
+            elseif 10<Nph(i)/N && Nph(i)/N<100
+                
+                rep=1000;
+
+            else
+                rep=100;
+            end
+            rep=10;
+            
+            % VM: Simulation of the light pulse and obtaining the mean
+            %     output charge and its standard deviation
+            
+            q_vector=zeros(rep,1);
+            q_vector_ct=zeros(rep,1);
+            q_first_vector=zeros(rep,1);
+            N_first_vector=zeros(rep,1);
+
+            s_mcell = struct('count',0,'t',[],'gain',[],'flag',[]);
+            s_mcell_hit = struct('count',0,'t',[],'flag',[]);
+            s_mcell_hit_first_gains = struct('first_photon',0,'noise_count',1,'first_gain',0,'first_noise_time',[],'first_noise_origin_i',[],'first_noise_origin_j',[]);
+
+
+           
+            parfor j=1:rep
+                
+                Nph_t =get_timestamp_photons(Nph(i), crystal_par.t, crystal_par.u,crystal_par.Poisson,Theta);
+                
+                [q,datos] = sipm_sim_array(no_timesteps,Nph_t,meas_sipm_par,fixed_sipm_par, crystal_par, flags,s_mcell,s_mcell_hit,s_mcell_hit_first_gains  );
+                
+                %q_vector(j,1)=sum(datos.first_gain_mean);
+                q_vector(j,1)=sum(datos.gain);
+
+                q_vector_ct(j,1)=sum(datos.gain(datos.flag==4));
+                q_first_vector(j,1)=sum(datos.first_gain_mean(datos.first_gain_mean>0));
+                N_first_vector(j,1)=length(datos.first_gain_mean(datos.first_gain_mean>0));
+                
+                
+                
+            end
+            
+            mean_q(i,uu+1)=mean(q_vector)/fixed_sipm_par.Ncells;
+            std_q(i,uu+1)=std(q_vector)/fixed_sipm_par.Ncells;
+            mean_q_first(i,uu+1)=mean(q_first_vector)/fixed_sipm_par.Ncells;
+            mean_q_ct(i,uu+1)=mean(q_vector_ct)/fixed_sipm_par.Ncells;
+            mean_N_first(i,uu+1)=mean(N_first_vector);
+            % VM: display which Voltage/Characteristic time/ energy have been simulated 
+            
+            T_cha=[Td(uu),Tr(uu),Ts(uu),Tc(uu),Tt1(uu),Tt2(uu)];
+            T_cha=T_cha(T_cha>0);
+
+            display(['Voltage: ' num2str(U(ui)) ' V, ' num2str((ui)) '/' num2str((N_U))])
+            display(['Characteristic time:' num2str(T_cha(1)) ' ns, ' num2str((uu)) '/' num2str((N_Td))])
+            display(['Seed:' num2str(meas_sipm_par(1).qe*Nph(i)/fixed_sipm_par.Ncells) ', ' num2str((i)) '/' num2str((N_E))])
+
+            toc;
+            
+    if Safe == 1
+    % Average charge
+    A = mean_q(1:length(Nph), 1:(N_Td+1));
+    writematrix(A, nombre, 'Sheet', 'Average charge');
+    
+    % Standard deviation
+    A = std_q(1:length(Nph), 1:(N_Td+1));
+    writematrix(A, nombre, 'Sheet', 'Standard deviation');
+    
+    % Average charge of the first photon
+    A = mean_q_first(1:length(Nph), 1:(N_Td+1));
+    writematrix(A, nombre, 'Sheet', 'Average charge of first photon');
+    
+    % Average charge created by crosstalk
+    A = mean_q_ct(1:length(Nph), 1:(N_Td+1));
+    writematrix(A, nombre, 'Sheet', 'Average charge crosstalk');
+    
+    % Average charge of the first avalanche
+    A = mean_N_first(1:length(Nph), 1:(N_Td+1));
+    writematrix(A, nombre, 'Sheet', 'Average charge first avalanche');
+    
+    % Information
+    writecell(info, nombre, 'Sheet', 'Information');
+    end
+
+            if uu==1
+            
+            mean_q(1:length(Nph),1)=meas_sipm_par(1).qe*meas_sipm_par(1).f*Nph/fixed_sipm_par.Ncells;
+            std_q(1:length(Nph),1)=meas_sipm_par(1).qe*meas_sipm_par(1).f*Nph/fixed_sipm_par.Ncells;
+            mean_q_first(1:length(Nph),1)=meas_sipm_par(1).qe*meas_sipm_par(1).f*Nph/fixed_sipm_par.Ncells;
+            mean_N_first(1:length(Nph),1)=meas_sipm_par(1).qe*meas_sipm_par(1).f*Nph/fixed_sipm_par.Ncells;
+            mean_q_ct(1:length(Nph),1)=meas_sipm_par(1).qe*meas_sipm_par(1).f*Nph/fixed_sipm_par.Ncells;
+
+            end
+        end
+
+        % VM: Adding to the data matrix a first column containing the seeds
+
+        
+        
+        % VM: saving results
+
+        
+
+    end
+    
+    
+end
+

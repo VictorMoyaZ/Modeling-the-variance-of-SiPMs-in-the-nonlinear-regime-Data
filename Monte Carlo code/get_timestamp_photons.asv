@@ -1,0 +1,47 @@
+function [Nph_t] = get_timestamp_photons(Nph, t,u,Poisson)
+
+%This is a simple routine to evaluate the timestamp of the optical photons.
+% The timestamps can also be obtained more rigorously using advanced
+% software such as GEANT4. 
+
+% VM: As input parameter this function takes:
+%     Nph: Is the number of photons
+%     t: Is the time asociated with each element of the integrated
+%     probability vector
+%     u: Is the integrated probability vector
+%     Poisson: Is a flag, if it is equal to 1 it will randomly generate the
+%     number of photons using a Poisson distribution with mean Nph
+
+% VM: As output parameter it generates a vector containig the arrival time
+%     of the incident photons
+
+% VM: If Poisson equal to 1 it will randomly generate the number of
+%     incident photons
+
+    if Poisson == 1
+        Nph = poissrnd(Nph,1); % Number of photons generated.
+    end
+
+% VM: It genrates Nph random numbers ant interpolate each corresponding
+%     time in the t, u vectors 
+
+
+    %Nph_t = -Td* log((1-rand(Nph,1))*(1 -Tr/Td));
+    %random_gaussian = normrnd(Nph, Nph*0.2);
+
+    % Redondear al entero más cercano
+    %random_integer = round(random_gaussian);
+
+    % Asegurarse de que sea mayor que 0
+    %Nph = max(random_integer, 1);
+    
+    % binomial negativa
+    % mu=Nph
+    % p=0.8
+    % var=mu/p
+    % r=p*mu/(1-p)
+    % Nph = nbinrnd(r,p,1)
+    Nph_t = interp1(u,t,rand(Nph,1));
+    
+    
+    
