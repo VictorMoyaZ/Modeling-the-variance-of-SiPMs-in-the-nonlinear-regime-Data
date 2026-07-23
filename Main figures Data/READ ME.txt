@@ -1,1 +1,0 @@
-This compressed folder contains the Excel files used to generate the figures for our experimental and simulated results. Each file includes an 'Instructions' sheet detailing the structure of the dataset.
